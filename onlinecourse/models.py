@@ -21,7 +21,9 @@ class Instructor(models.Model):
 
     def __str__(self):
         return self.user.username
-
+class Submission(models.Model):
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
+    choices = models.ManyToManyField(Choice)
 
 # Learner model
 class Learner(models.Model):
