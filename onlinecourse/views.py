@@ -12,7 +12,48 @@ import logging
 logger = logging.getLogger(__name__)
 # Create your views here.
 
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import HttpResponse
+from .models import Course, Enrollment, Submission, Choice
 
+
+def submit(request, course_id):
+    course = get_object_or_404(Course, pk=course_id)
+    enrollment = get_object_or_404(Enrollment, user=request.user, course=course)
+
+    submitted_answers = request.POST.getlist('choice')
+    submission = Submission.objects.create(enrollment=enrollment)
+
+    choices = Choice.objects.filter(pk__in=submitted_answers)
+    submission.choices.set(choices)
+
+    return redirect('onlinecourse:show_exam_result', course.id, submission.id)
+
+
+def show_exam_result(request, course_id, submission_id):
+    course = get_object_or_404(Course, pk=course_id)
+    submission = get_object_or_404(Submission, pk=submission_id)
+
+    total_questions = course.question_set.count()
+    correct_choices = 0
+
+    for question in course.question_set.all():
+        selected_choices = submission.choices.filter(question=question)
+        correct_answers = question.choice_set.filter(is_correct=True)
+
+        if set(selected_choices) == set(correct_answers):
+            correct_choices += 1
+
+    grade = 0
+    if total_questions > 0:
+        grade = int((correct_choices / total_questions) * 100)
+
+    context = {
+        'course': course,
+        'submission': submission,
+        'grade': grade,
+    }
+    return render(request, 'onlinecourse/exam_result_bootstrap.html', context)
 def registration_request(request):
     context = {}
     if request.method == 'GET':
